@@ -13,6 +13,10 @@
   <img alt="Dependencies" src="https://img.shields.io/badge/dependencies-0-brightgreen">
 </p>
 
+<p align="center">
+  <img src="assets/demo.gif" alt="mdgoat scanning a poisoned document" width="820">
+</p>
+
 Tools like [Microsoft MarkItDown](https://github.com/microsoft/markitdown), Docling, and countless RAG pipelines have made one thing standard: **everything becomes markdown before it reaches your model.** PDFs, Word docs, spreadsheets, web pages — all funneled into markdown and fed straight into an LLM's context window.
 
 That markdown is an **unreviewed, unsanitized input channel** pointed directly at your model. And it's full of things you can't see:
@@ -105,6 +109,10 @@ mdgoat score README.md --badge               # emit a shields.io badge for your 
 
 Every document starts at 100. Findings deduct by severity, each rule is capped so one noisy rule can't dominate, and **any critical injection caps the score at 40** — a document carrying hidden instructions is never "mostly fine."
 
+<p align="center">
+  <img src="assets/score.png" alt="mdgoat score output" width="640">
+</p>
+
 ### `clean` — fix what's safely fixable
 ```bash
 mdgoat clean report.md               # cleaned markdown to stdout
@@ -122,18 +130,9 @@ The cleaner is **conservative and deterministic** — no LLM, no network, no gue
 ### `diff` — which converter won?
 You ran the same PDF through two converters and want the cleaner output — not the one that *looks* nicer. `diff` scores both and shows exactly which problems each has that the other doesn't.
 
-```console
-$ mdgoat diff markitdown.md docling.md
-Comparing two documents by LLM-readiness:
-  markitdown.md   83/100 (B)   ~1,204 tokens
-  docling.md     100/100 (A+)  ~1,180 tokens
-
-  → docling.md is cleaner by 17 point(s).
-
-  Only in markitdown.md (2):
-    HIGH     SEC001  1 invisible character(s) (ZERO WIDTH SPACE)
-    MEDIUM   ART001  1 mojibake sequence(s)
-```
+<p align="center">
+  <img src="assets/diff.png" alt="mdgoat diff comparing two converters" width="820">
+</p>
 
 ### `cost` — the token & dollar footprint
 ```bash
