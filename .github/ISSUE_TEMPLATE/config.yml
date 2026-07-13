@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability in mdgoat
+    url: https://github.com/shahcolate/mdgoat/security/advisories/new
+    about: Please report vulnerabilities in mdgoat itself privately. See SECURITY.md.

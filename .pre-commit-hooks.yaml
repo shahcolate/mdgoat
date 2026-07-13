@@ -1,0 +1,7 @@
+- id: mdgoat
+  name: mdgoat (markdown quality gate for LLMs)
+  description: Scan markdown for hidden prompt injections and conversion damage before it reaches your model.
+  entry: mdgoat scan --fail-on high
+  language: python
+  types: [markdown]
+  require_serial: false
