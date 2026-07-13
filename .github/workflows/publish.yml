@@ -1,11 +1,17 @@
 name: Publish to PyPI
 
-# Publishes on a GitHub Release using PyPI Trusted Publishing (OIDC) — no API
-# tokens stored. Configure the "pypi" environment as a trusted publisher for
-# this repo at https://pypi.org/manage/account/publishing/ before first use.
+# Publishes using PyPI Trusted Publishing (OIDC) — no API tokens stored.
+# Configure the "pypi" environment as a trusted publisher for this repo at
+# https://pypi.org/manage/account/publishing/ before first use.
+#
+# Fires on a published GitHub Release (the normal path, which also creates the
+# tag), or manually via the Actions tab / `workflow_dispatch` — handy for
+# re-running a failed publish. Trusted Publishing matches on the workflow file
+# and the "pypi" environment, not the trigger, so both paths work.
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   build:

@@ -58,3 +58,29 @@ If you know of a smuggling or injection technique mdgoat misses, that is a
 feature request, not a vulnerability in mdgoat itself — open a normal issue
 using the "New detector" template. See [SECURITY.md](SECURITY.md) for how to
 report an actual vulnerability in the tool.
+
+## Releasing (maintainers)
+
+mdgoat publishes to PyPI via
+[Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (OIDC — no
+stored tokens), driven by `.github/workflows/publish.yml`.
+
+One-time setup: on PyPI add a trusted publisher (or a *pending* publisher for
+the first release) with owner `shahcolate`, repo `mdgoat`, workflow
+`publish.yml`, environment `pypi`; then create a GitHub environment named
+`pypi` under **Settings → Environments**.
+
+Each release:
+
+1. Bump the version in **both** `pyproject.toml` and `mdgoat/__init__.py`, and
+   move the `[Unreleased]` notes in `CHANGELOG.md` under the new version.
+2. Merge that to `main`.
+3. **Draft a new GitHub Release** for tag `vX.Y.Z` (Releases → Draft a new
+   release → create the tag on publish). Publishing the Release creates the tag
+   *and* triggers `publish.yml`, which builds the sdist + wheel, runs
+   `twine check`, and uploads to PyPI.
+4. Verify: `pip install --upgrade mdgoat && mdgoat --version`.
+
+A failed publish can be re-run from the **Actions** tab (the workflow also
+accepts a manual `workflow_dispatch`). PyPI will not accept re-uploading an
+existing version, so always bump first.
