@@ -3,6 +3,9 @@
     mdgoat scan  docs/            # find problems
     mdgoat score README.md        # 0-100 LLM-readiness score
     mdgoat clean report.md        # fix what's safely fixable
+    mdgoat diff a.md b.md         # compare two conversions
+    mdgoat cost report.md         # token & dollar footprint
+    mdgoat canary inject doc.md   # red-team your injection defenses
     mdgoat rules                  # list every rule
 """
 
@@ -15,8 +18,10 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from . import __version__
+from . import __version__, canary as canary_mod
 from .cleaner import clean
+from .cost import EXAMPLE_PRICES_PER_1M, cost_report
+from .differ import diff_reports
 from .models import Severity
 from .report import (
     render_report,
@@ -110,6 +115,14 @@ def cmd_score(args) -> int:
             for r in reports
         ]
         print(json.dumps(payload[0] if len(payload) == 1 else payload, indent=2))
+    elif args.markdown:
+        print("| File | Score | Grade | ~Tokens |")
+        print("|------|------:|:-----:|--------:|")
+        for r in reports:
+            print(
+                "| `%s` | %d/100 | %s | %s |"
+                % (r.path, r.score, r.grade, format(r.token_estimate, ","))
+            )
     else:
         for r in reports:
             print(render_score_line(r, color=color, badge=args.badge))
@@ -177,6 +190,146 @@ def cmd_clean(args) -> int:
     return 0
 
 
+def _read_one(path: str) -> str:
+    if path == "-":
+        return sys.stdin.read()
+    p = Path(path)
+    if not p.is_file():
+        print("mdgoat: no such file: %s" % path, file=sys.stderr)
+        raise SystemExit(2)
+    return p.read_text(encoding="utf-8", errors="replace")
+
+
+def cmd_diff(args) -> int:
+    left = scan(_read_one(args.left), path=args.left)
+    right = scan(_read_one(args.right), path=args.right)
+    result = diff_reports(left, right)
+    if args.json:
+        print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
+        return 0
+    color = use_color()
+
+    def line(r):
+        return "  %-40s %3d/100 (%s)  ~%s tokens" % (
+            r.path, r.score, r.grade, format(r.token_estimate, ",")
+        )
+
+    print("Comparing two documents by LLM-readiness:")
+    print(line(left))
+    print(line(right))
+    print()
+    if result.winner:
+        print(
+            "  → %s is cleaner by %d point(s)."
+            % (result.winner, abs(result.score_delta))
+        )
+    else:
+        print("  → tie (%d/100 each)." % left.score)
+
+    if result.only_left:
+        print("\n  Only in %s (%d):" % (left.path, len(result.only_left)))
+        for f in result.only_left:
+            print("    %-8s %s %s" % (f.severity.label, f.rule_id, f.message[:88]))
+    if result.only_right:
+        print("\n  Only in %s (%d):" % (right.path, len(result.only_right)))
+        for f in result.only_right:
+            print("    %-8s %s %s" % (f.severity.label, f.rule_id, f.message[:88]))
+    if not result.only_left and not result.only_right:
+        print("\n  Identical findings.")
+    return 0
+
+
+def cmd_cost(args) -> int:
+    reports = []
+    for path, text in _read_inputs(args.paths):
+        reports.append(
+            cost_report(
+                text,
+                path=path,
+                tokenizer=args.tokenizer,
+                models=args.model,
+                price_per_1m=args.price_per_1m,
+                per_section=args.per_section,
+            )
+        )
+    if not reports:
+        print("mdgoat: no markdown files found", file=sys.stderr)
+        return 2
+    if args.json:
+        payload = [r.to_dict() for r in reports]
+        print(json.dumps(payload[0] if len(payload) == 1 else payload, indent=2))
+        return 0
+    for i, r in enumerate(reports):
+        if i:
+            print()
+        print("%s  %s tokens (%s)" % (r.path, format(r.tokens, ","), r.tokenizer))
+        for model, cost in r.model_costs.items():
+            print("  $%.4f per call   %s" % (cost, model))
+        if r.sections:
+            print("  top sections by tokens:")
+            for s in r.sections[:8]:
+                print("    %6s  %s" % (format(s.tokens, ","), s.heading[:60]))
+    return 0
+
+
+def cmd_canary(args) -> int:
+    if args.canary_command == "inject":
+        text = _read_one(args.file)
+        result = canary_mod.inject(text, techniques=args.technique)
+        manifest = result.manifest()
+        if args.output:
+            Path(args.output).write_text(result.text, encoding="utf-8")
+            print("mdgoat: wrote poisoned document to %s" % args.output, file=sys.stderr)
+        else:
+            sys.stdout.write(result.text)
+        manifest_path = args.manifest or (
+            (args.output + ".manifest.json") if args.output else None
+        )
+        if manifest_path:
+            Path(manifest_path).write_text(
+                json.dumps(manifest, indent=2), encoding="utf-8"
+            )
+            print("mdgoat: wrote manifest to %s" % manifest_path, file=sys.stderr)
+        elif args.output:
+            pass
+        print(
+            "mdgoat: planted %d canary/canaries (%s)"
+            % (manifest["count"], ", ".join(c["technique"] for c in manifest["canaries"])),
+            file=sys.stderr,
+        )
+        if manifest_path is None and not args.output:
+            # stdout held the document; emit the manifest to stderr as JSON so
+            # nothing is lost when piping.
+            print(json.dumps(manifest), file=sys.stderr)
+        return 0
+
+    if args.canary_command == "verify":
+        manifest = json.loads(_read_one(args.manifest))
+        response = _read_one(args.response)
+        result = canary_mod.verify(response, manifest)
+        if args.json:
+            print(json.dumps(result.to_dict(), indent=2))
+        else:
+            if result.defended:
+                print("PASS: no canary tokens leaked — every injection was neutralized.")
+            else:
+                print(
+                    "FAIL: %d injection channel(s) reached the model:"
+                    % len(result.fired)
+                )
+                for c in result.fired:
+                    print("  %s  (%s)" % (c.token, c.technique))
+            if result.survived:
+                print(
+                    "  defended: %s"
+                    % ", ".join(c.technique for c in result.survived)
+                )
+        return 0 if result.defended else 1
+
+    print("mdgoat: canary needs a subcommand (inject or verify)", file=sys.stderr)
+    return 2
+
+
 def cmd_rules(args) -> int:
     print("%-8s %-32s %-11s %-9s %-4s %s" % ("ID", "NAME", "CATEGORY", "SEVERITY", "FIX", "DESCRIPTION"))
     for rule_id, name, category, severity, fixable, description in RULES:
@@ -220,6 +373,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_score = sub.add_parser("score", help="score LLM-readiness 0-100 with a letter grade")
     add_common(p_score)
     p_score.add_argument("--badge", action="store_true", help="emit a shields.io badge for your README")
+    p_score.add_argument("--markdown", action="store_true", help="emit a markdown table (great for CI job summaries)")
     p_score.add_argument("--min-score", type=int, default=None, metavar="N", help="exit non-zero if any file scores below N")
     p_score.set_defaults(func=cmd_score)
 
@@ -231,6 +385,61 @@ def build_parser() -> argparse.ArgumentParser:
     p_clean.add_argument("--keep-comments", action="store_true", help="do not strip HTML comments")
     p_clean.add_argument("--keep-punctuation", action="store_true", help="do not normalize typographic punctuation")
     p_clean.set_defaults(func=cmd_clean)
+
+    p_diff = sub.add_parser("diff", help="compare two markdown files by LLM-readiness (e.g. two converters)")
+    p_diff.add_argument("left", help="first file (or '-' for stdin)")
+    p_diff.add_argument("right", help="second file")
+    p_diff.add_argument("--json", action="store_true", help="machine-readable output")
+    p_diff.set_defaults(func=cmd_diff)
+
+    p_cost = sub.add_parser("cost", help="estimate token footprint and per-call dollar cost")
+    p_cost.add_argument("paths", nargs="*", default=["-"], help="files, directories, or '-' for stdin")
+    p_cost.add_argument("--json", action="store_true", help="machine-readable output")
+    p_cost.add_argument(
+        "--tokenizer",
+        default="builtin",
+        choices=["builtin", "tiktoken"],
+        help="token counter; 'tiktoken' is exact but needs mdgoat[tokenizers] (default: builtin)",
+    )
+    p_cost.add_argument(
+        "--model",
+        action="append",
+        metavar="NAME",
+        help="price row(s) to show (repeatable); choices: %s" % ", ".join(EXAMPLE_PRICES_PER_1M),
+    )
+    p_cost.add_argument(
+        "--price-per-1m",
+        type=float,
+        default=None,
+        metavar="USD",
+        help="your own price per 1,000,000 input tokens (overrides the built-in table)",
+    )
+    p_cost.add_argument("--per-section", action="store_true", help="break tokens down by top-level heading")
+    p_cost.set_defaults(func=cmd_cost)
+
+    p_canary = sub.add_parser(
+        "canary",
+        help="red-team your injection defenses: plant benign marked injections, then verify",
+    )
+    canary_sub = p_canary.add_subparsers(dest="canary_command")
+
+    p_inject = canary_sub.add_parser("inject", help="plant benign marked canary injections into a document")
+    p_inject.add_argument("file", help="source document (or '-' for stdin)")
+    p_inject.add_argument("--output", "-o", metavar="FILE", help="write poisoned document here (default: stdout)")
+    p_inject.add_argument("--manifest", metavar="FILE", help="write the canary manifest JSON here")
+    p_inject.add_argument(
+        "--technique",
+        action="append",
+        metavar="NAME",
+        help="channel(s) to use (repeatable); choices: %s" % ", ".join(canary_mod.TECHNIQUES),
+    )
+    p_inject.set_defaults(func=cmd_canary)
+
+    p_cverify = canary_sub.add_parser("verify", help="check a model response for leaked canary tokens")
+    p_cverify.add_argument("manifest", help="the manifest JSON written by 'canary inject'")
+    p_cverify.add_argument("response", help="the model/pipeline output to check (or '-' for stdin)")
+    p_cverify.add_argument("--json", action="store_true", help="machine-readable output")
+    p_cverify.set_defaults(func=cmd_canary)
 
     p_rules = sub.add_parser("rules", help="list every rule")
     p_rules.set_defaults(func=cmd_rules)

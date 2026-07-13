@@ -23,8 +23,11 @@ from .models import Document, Finding, Severity
 from .scanner import scan
 from .cleaner import CleanResult, clean
 from .scoring import GRADES, grade_for, score_findings
+from .differ import DiffResult, diff_reports, diff_text
+from .cost import CostReport, cost_report, count_tokens
+from . import canary
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "Document",
@@ -36,5 +39,12 @@ __all__ = [
     "score_findings",
     "grade_for",
     "GRADES",
+    "diff_reports",
+    "diff_text",
+    "DiffResult",
+    "cost_report",
+    "count_tokens",
+    "CostReport",
+    "canary",
     "__version__",
 ]

@@ -1,0 +1,103 @@
+name: "mdgoat"
+description: "Scan markdown for hidden prompt injections and conversion damage, and gate on an LLM-readiness score."
+branding:
+  icon: "shield"
+  color: "green"
+
+inputs:
+  paths:
+    description: "Files or directories to scan (space-separated)."
+    required: false
+    default: "."
+  fail-on:
+    description: "Fail the job if any finding is at or above this severity (info|low|medium|high|critical)."
+    required: false
+    default: "high"
+  min-score:
+    description: "Optional: also fail if any file scores below this 0-100 threshold."
+    required: false
+    default: ""
+  comment:
+    description: "Post the score table as a PR comment (needs pull-requests: write permission)."
+    required: false
+    default: "false"
+  version:
+    description: "mdgoat version to install (e.g. 0.2.0). Empty installs the latest."
+    required: false
+    default: ""
+  python-version:
+    description: "Python version to use."
+    required: false
+    default: "3.12"
+
+outputs:
+  score-table:
+    description: "Markdown table of per-file scores."
+    value: ${{ steps.score.outputs.table }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install mdgoat
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.version }}" ]; then
+          pip install "mdgoat==${{ inputs.version }}"
+        else
+          pip install mdgoat
+        fi
+
+    - name: Score (job summary + output)
+      id: score
+      shell: bash
+      run: |
+        table="$(mdgoat score ${{ inputs.paths }} --markdown)"
+        {
+          echo "## 🐐 mdgoat"
+          echo ""
+          echo "$table"
+        } >> "$GITHUB_STEP_SUMMARY"
+        {
+          echo "table<<MDGOAT_EOF"
+          echo "$table"
+          echo "MDGOAT_EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Comment on PR
+      if: inputs.comment == 'true' && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      env:
+        MDGOAT_TABLE: ${{ steps.score.outputs.table }}
+      with:
+        script: |
+          const marker = '<!-- mdgoat-report -->';
+          const body = `${marker}\n## 🐐 mdgoat\n\n${process.env.MDGOAT_TABLE}`;
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner, repo: context.repo.repo,
+            issue_number: context.issue.number, per_page: 100,
+          });
+          const mine = comments.find(c => c.body && c.body.includes(marker));
+          if (mine) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              comment_id: mine.id, body,
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.issue.number, body,
+            });
+          }
+
+    - name: Gate
+      shell: bash
+      run: |
+        mdgoat scan ${{ inputs.paths }} --fail-on ${{ inputs.fail-on }}
+        if [ -n "${{ inputs.min-score }}" ]; then
+          mdgoat score ${{ inputs.paths }} --min-score "${{ inputs.min-score }}" >/dev/null
+        fi

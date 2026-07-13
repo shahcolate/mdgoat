@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mdgoat"
-version = "0.1.0"
+version = "0.2.0"
 description = "The markdown quality gate for the AI input layer. Goats eat anything - your LLM shouldn't."
 readme = "README.md"
 license = "MIT"
@@ -37,6 +37,11 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/shahcolate/mdgoat"
 Issues = "https://github.com/shahcolate/mdgoat/issues"
+
+[project.optional-dependencies]
+# Exact token counting for `mdgoat cost --tokenizer tiktoken`. The core tool
+# stays dependency-free; this is opt-in.
+tokenizers = ["tiktoken>=0.7"]
 
 [project.scripts]
 mdgoat = "mdgoat.cli:main"

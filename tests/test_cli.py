@@ -118,6 +118,66 @@ class CliTests(unittest.TestCase):
         code, _, _ = run_cli("scan", str(self.dir / "nope.md"))
         self.assertEqual(code, 2)
 
+    def test_score_markdown_table(self):
+        path = self.write("ok.md", "# Fine\n\nGood.\n")
+        code, out, _ = run_cli("score", "--markdown", path)
+        self.assertEqual(code, 0)
+        self.assertIn("| File | Score | Grade", out)
+        self.assertIn("100/100", out)
+
+    def test_diff_picks_winner(self):
+        a = self.write("a.md", "text​with zwsp\n")
+        b = self.write("b.md", "text with space\n")
+        code, out, _ = run_cli("diff", a, b)
+        self.assertEqual(code, 0)
+        self.assertIn("cleaner", out)
+        self.assertIn("b.md", out)
+
+    def test_diff_json(self):
+        a = self.write("a.md", "x​\n")
+        b = self.write("b.md", "x\n")
+        code, out, _ = run_cli("diff", "--json", a, b)
+        data = json.loads(out)
+        self.assertEqual(data["winner"], b)
+
+    def test_cost_json(self):
+        path = self.write("doc.md", "# Title\n\n" + "word " * 300)
+        code, out, _ = run_cli("cost", "--json", path)
+        data = json.loads(out)
+        self.assertGreater(data["tokens"], 0)
+        self.assertIn("claude-sonnet", data["model_costs_usd"])
+
+    def test_cost_price_override(self):
+        path = self.write("doc.md", "word " * 100)
+        code, out, _ = run_cli("cost", "--json", "--price-per-1m", "10", path)
+        data = json.loads(out)
+        self.assertEqual(list(data["model_costs_usd"]), ["custom"])
+
+    def test_canary_inject_and_verify_roundtrip(self):
+        src = self.write("src.md", "# Doc\n\nA.\n\nB.\n\nC.\n")
+        poisoned = str(self.dir / "poisoned.md")
+        manifest = str(self.dir / "man.json")
+        code, _, err = run_cli(
+            "canary", "inject", src, "-o", poisoned, "--manifest", manifest
+        )
+        self.assertEqual(code, 0)
+        self.assertIn("planted", err)
+        # the poisoned doc must trip the scanner
+        code, _, _ = run_cli("scan", poisoned)
+        self.assertEqual(code, 1)
+        # a response that leaks a token fails verification
+        man = json.loads(Path(manifest).read_text())
+        leaked = man["canaries"][0]["token"]
+        resp = self.write("resp.txt", "sure: " + leaked + "\n")
+        code, out, _ = run_cli("canary", "verify", manifest, resp)
+        self.assertEqual(code, 1)
+        self.assertIn("FAIL", out)
+        # a clean response passes
+        clean_resp = self.write("clean.txt", "no tokens here\n")
+        code, out, _ = run_cli("canary", "verify", manifest, clean_resp)
+        self.assertEqual(code, 0)
+        self.assertIn("PASS", out)
+
 
 if __name__ == "__main__":
     unittest.main()

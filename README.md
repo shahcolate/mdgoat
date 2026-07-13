@@ -29,9 +29,12 @@ pip install mdgoat
 ```
 
 ```bash
-mdgoat scan  docs/            # find hidden injections & conversion damage
-mdgoat score README.md        # 0–100 LLM-readiness score with a letter grade
-mdgoat clean report.md -i     # auto-fix everything safely fixable
+mdgoat scan  docs/                  # find hidden injections & conversion damage
+mdgoat score README.md              # 0–100 LLM-readiness score with a letter grade
+mdgoat clean report.md -i           # auto-fix everything safely fixable
+mdgoat diff markitdown.md docling.md  # which converter produced cleaner output?
+mdgoat cost report.md               # token & dollar footprint, per section
+mdgoat canary inject doc.md         # red-team your pipeline's injection defenses
 ```
 
 ---
@@ -114,25 +117,69 @@ The cleaner is **conservative and deterministic** — no LLM, no network, no gue
 
 ---
 
+## Three more tools
+
+### `diff` — which converter won?
+You ran the same PDF through two converters and want the cleaner output — not the one that *looks* nicer. `diff` scores both and shows exactly which problems each has that the other doesn't.
+
+```console
+$ mdgoat diff markitdown.md docling.md
+Comparing two documents by LLM-readiness:
+  markitdown.md   83/100 (B)   ~1,204 tokens
+  docling.md     100/100 (A+)  ~1,180 tokens
+
+  → docling.md is cleaner by 17 point(s).
+
+  Only in markitdown.md (2):
+    HIGH     SEC001  1 invisible character(s) (ZERO WIDTH SPACE)
+    MEDIUM   ART001  1 mojibake sequence(s)
+```
+
+### `cost` — the token & dollar footprint
+```bash
+mdgoat cost report.md --per-section              # where the tokens go, by heading
+mdgoat cost report.md --price-per-1m 3.00        # your own rate
+mdgoat cost report.md --tokenizer tiktoken       # exact counts (pip install "mdgoat[tokenizers]")
+```
+The built-in counter is dependency-free and approximate; install the optional tokenizer for exact numbers. Prices are illustrative — always confirm current rates.
+
+### `canary` — red-team your own defenses
+The matched pair to the scanner. Plant benign, uniquely-marked injections through five channels, run your pipeline, then check whether any got through:
+
+```bash
+mdgoat canary inject doc.md -o poisoned.md --manifest canaries.json
+#   … feed poisoned.md through your RAG pipeline / model, capture the output …
+mdgoat canary verify canaries.json model-output.txt   # exit 1 if any injection fired
+```
+
+Any canary token that comes back means that channel defeated your sanitizer. Every canary mdgoat plants is also something `mdgoat scan` catches — so if you run mdgoat in your pipeline, `verify` should always pass.
+
+---
+
 ## Use it in CI
 
-Drop this in `.github/workflows/mdgoat.yml` to block any PR that introduces a hidden injection or conversion garbage into your docs:
+The published **GitHub Action** scans your docs, writes a score table to the job summary, and can comment it on the PR:
 
 ```yaml
 name: mdgoat
 on: [push, pull_request]
+permissions:
+  contents: read
+  pull-requests: write   # only needed for comment: true
 jobs:
   mdgoat:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: pip install mdgoat
-      - run: mdgoat scan docs/ --fail-on high
+      - uses: shahcolate/mdgoat@v0.2.0
+        with:
+          paths: docs/
+          fail-on: high
+          min-score: "80"   # optional
+          comment: "true"   # optional PR comment
 ```
 
-Or use it as a pre-commit hook — see [`.pre-commit-hooks.yaml`](.pre-commit-hooks.yaml).
+Prefer to keep it minimal? The CLI is one line: `pip install mdgoat && mdgoat scan docs/ --fail-on high`. There's also a [pre-commit hook](.pre-commit-hooks.yaml).
 
 ---
 
@@ -148,6 +195,11 @@ if report.score < 80:
 
 # Sanitize before it ever reaches your model
 safe = mdgoat.clean(markdown_text).text
+
+# Compare two conversions, estimate cost, or red-team your defenses
+winner = mdgoat.diff_text(a, "markitdown.md", b, "docling.md").winner
+tokens = mdgoat.cost_report(markdown_text).tokens
+poisoned = mdgoat.canary.inject(markdown_text)
 ```
 
 Perfect as a **guardrail step in a RAG ingestion pipeline**: run `clean()` on every document as it lands, and `scan()` to quarantine anything that scores below your threshold.
