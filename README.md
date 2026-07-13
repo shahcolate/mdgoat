@@ -1,11 +1,17 @@
-# 🐐 mdgoat
+<p align="center">
+  <img src="assets/logo.svg" alt="mdgoat" width="128" height="128">
+</p>
 
-**The markdown quality gate for the AI input layer. Goats eat anything — your LLM shouldn't.**
+<h1 align="center">mdgoat</h1>
 
-[![mdgoat: 100 A+](https://img.shields.io/badge/mdgoat-100%20A%2B-brightgreen)](https://github.com/shahcolate/mdgoat)
-![Python](https://img.shields.io/badge/python-3.9%2B-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
+<p align="center"><strong>The markdown quality gate for the AI input layer.<br>Goats eat anything — your LLM shouldn't.</strong></p>
+
+<p align="center">
+  <a href="https://github.com/shahcolate/mdgoat"><img alt="mdgoat: 100 A+" src="https://img.shields.io/badge/mdgoat-100%20A%2B-brightgreen"></a>
+  <img alt="Python" src="https://img.shields.io/badge/python-3.9%2B-blue">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
+  <img alt="Dependencies" src="https://img.shields.io/badge/dependencies-0-brightgreen">
+</p>
 
 Tools like [Microsoft MarkItDown](https://github.com/microsoft/markitdown), Docling, and countless RAG pipelines have made one thing standard: **everything becomes markdown before it reaches your model.** PDFs, Word docs, spreadsheets, web pages — all funneled into markdown and fed straight into an LLM's context window.
 

@@ -1,0 +1,13 @@
+include LICENSE
+include README.md
+include CHANGELOG.md
+include SECURITY.md
+include CONTRIBUTING.md
+include CODE_OF_CONDUCT.md
+include .pre-commit-hooks.yaml
+include mdgoat/py.typed
+recursive-include examples *.md
+recursive-include tests *.py
+graft assets
+global-exclude __pycache__
+global-exclude *.py[cod]

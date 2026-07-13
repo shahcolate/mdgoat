@@ -1,0 +1,39 @@
+<svg width="220" height="220" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="mdgoat logo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#43d675"/>
+      <stop offset="1" stop-color="#1f9d54"/>
+    </linearGradient>
+  </defs>
+
+  <!-- rounded badge -->
+  <rect x="6" y="6" width="208" height="208" rx="46" fill="url(#bg)"/>
+  <rect x="6" y="6" width="208" height="208" rx="46" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="2"/>
+
+  <!-- horns -->
+  <path d="M78 70 C55 52 44 60 42 74 C40 86 50 92 62 88" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/>
+  <path d="M142 70 C165 52 176 60 178 74 C180 86 170 92 158 88" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/>
+
+  <!-- ears -->
+  <path d="M70 92 C56 90 48 98 52 110 C58 108 66 104 74 102 Z" fill="#ffffff" fill-opacity="0.92"/>
+  <path d="M150 92 C164 90 172 98 168 110 C162 108 154 104 146 102 Z" fill="#ffffff" fill-opacity="0.92"/>
+
+  <!-- face -->
+  <path d="M110 82
+           C138 82 152 100 152 124
+           C152 150 134 172 110 172
+           C86 172 68 150 68 124
+           C68 100 82 82 110 82 Z" fill="#ffffff"/>
+
+  <!-- eyes -->
+  <circle cx="93" cy="120" r="8" fill="#1f9d54"/>
+  <circle cx="127" cy="120" r="8" fill="#1f9d54"/>
+
+  <!-- snout + nostrils -->
+  <ellipse cx="110" cy="150" rx="20" ry="14" fill="#eafaf0"/>
+  <circle cx="103" cy="150" r="2.6" fill="#1f9d54"/>
+  <circle cx="117" cy="150" r="2.6" fill="#1f9d54"/>
+
+  <!-- beard -->
+  <path d="M100 168 C102 184 108 190 110 196 C112 190 118 184 120 168 Z" fill="#ffffff"/>
+</svg>

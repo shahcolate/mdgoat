@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,8 @@ name = "mdgoat"
 version = "0.1.0"
 description = "The markdown quality gate for the AI input layer. Goats eat anything - your LLM shouldn't."
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.9"
 authors = [{ name = "mdgoat contributors" }]
 keywords = [
@@ -25,7 +26,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
@@ -43,3 +43,6 @@ mdgoat = "mdgoat.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["mdgoat*"]
+
+[tool.setuptools.package-data]
+mdgoat = ["py.typed"]
