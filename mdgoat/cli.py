@@ -310,19 +310,24 @@ def cmd_canary(args) -> int:
         if args.json:
             print(json.dumps(result.to_dict(), indent=2))
         else:
+            color = use_color()
+            green = "\x1b[1;32m" if color else ""
+            red = "\x1b[1;31m" if color else ""
+            dim = "\x1b[2m" if color else ""
+            reset = "\x1b[0m" if color else ""
             if result.defended:
-                print("PASS: no canary tokens leaked — every injection was neutralized.")
+                print("%sPASS%s: no canary tokens leaked — every injection was neutralized." % (green, reset))
             else:
                 print(
-                    "FAIL: %d injection channel(s) reached the model:"
-                    % len(result.fired)
+                    "%sFAIL%s: %d injection channel(s) reached the model:"
+                    % (red, reset, len(result.fired))
                 )
                 for c in result.fired:
-                    print("  %s  (%s)" % (c.token, c.technique))
+                    print("  %s%s%s  (%s)" % (red, c.token, reset, c.technique))
             if result.survived:
                 print(
-                    "  defended: %s"
-                    % ", ".join(c.technique for c in result.survived)
+                    "  %sdefended: %s%s"
+                    % (dim, ", ".join(c.technique for c in result.survived), reset)
                 )
         return 0 if result.defended else 1
 
