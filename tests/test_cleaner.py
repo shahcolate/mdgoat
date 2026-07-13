@@ -21,6 +21,16 @@ class CleanerTests(unittest.TestCase):
         result = clean(text)
         self.assertIn("\U0001F469‍\U0001F4BB", result.text)
 
+    def test_preserves_emoji_variation_selector_at_boundaries(self):
+        # VS16 (U+FE0F) in a heart emoji must survive even at the very start
+        # or end of the document, not just mid-string.
+        for text in ("❤️", "I love ❤️", "️❤ leading", "❤️ love", "🏳️‍🌈"):
+            self.assertEqual(clean(text + "\n").text, text + "\n")
+
+    def test_strips_bare_zwj_at_boundaries(self):
+        self.assertEqual(clean("‍hello\n").text, "hello\n")
+        self.assertEqual(clean("hello‍\n").text, "hello\n")
+
     def test_fixes_mojibake_quote(self):
         result = clean("Itâ€™s working\n")
         # mojibake repaired, then punctuation normalized to ASCII

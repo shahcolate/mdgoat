@@ -25,11 +25,14 @@ from .models import estimate_tokens
 
 _TAG_BLOCK_RE = re.compile("[\U000E0000-\U000E007F]")
 _INVISIBLE_RE = re.compile("[\u200b\u200c\u2060\u00ad\u034f\u180e\ufeff]")
-# ZWJ / variation selectors only when not adjacent to non-ASCII (emoji safety)
+# ZWJ / variation selectors only when NOT adjacent to an emoji (emoji safety).
+# Every branch requires an ASCII neighbor on the emoji-facing side, so a
+# selector that is part of a real emoji sequence (e.g. the VS16 in "\u2764\ufe0f") is
+# never stripped, including when it sits at the very start or end of the text.
 _ZWJ_ASCII_RE = re.compile(
     "(?<=[\x00-\x7f])[\u200d\ufe00-\ufe0f](?=[\x00-\x7f])"
-    "|\\A[\u200d\ufe00-\ufe0f]"
-    "|[\u200d\ufe00-\ufe0f]\\Z"
+    "|\\A[\u200d\ufe00-\ufe0f](?=[\x00-\x7f])"
+    "|(?<=[\x00-\x7f])[\u200d\ufe00-\ufe0f]\\Z"
 )
 _BIDI_RE = re.compile("[\u202a-\u202e\u2066-\u2069]")
 _CONTROL_RE = re.compile("[\x00-\x08\x0b\x0e-\x1f\x7f\x80-\x9f]")
