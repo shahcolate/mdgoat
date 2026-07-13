@@ -6,6 +6,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- `mdgoat canary verify` now colors its PASS/FAIL result (green/red) when writing
+  to a terminal, matching the rest of the CLI. No change to piped/`--json` output.
+
 ## [0.2.0] - 2026-07-13
 
 ### Added

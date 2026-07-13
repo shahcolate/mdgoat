@@ -14,7 +14,8 @@
 </p>
 
 <p align="center">
-  <img src="assets/demo.gif" alt="mdgoat scanning a poisoned document" width="820">
+  <img src="assets/demo.gif#gh-dark-mode-only" alt="mdgoat scanning a poisoned document" width="820">
+  <img src="assets/demo-light.gif#gh-light-mode-only" alt="mdgoat scanning a poisoned document" width="820">
 </p>
 
 Tools like [Microsoft MarkItDown](https://github.com/microsoft/markitdown), Docling, and countless RAG pipelines have made one thing standard: **everything becomes markdown before it reaches your model.** PDFs, Word docs, spreadsheets, web pages — all funneled into markdown and fed straight into an LLM's context window.
@@ -110,7 +111,8 @@ mdgoat score README.md --badge               # emit a shields.io badge for your 
 Every document starts at 100. Findings deduct by severity, each rule is capped so one noisy rule can't dominate, and **any critical injection caps the score at 40** — a document carrying hidden instructions is never "mostly fine."
 
 <p align="center">
-  <img src="assets/score.png" alt="mdgoat score output" width="640">
+  <img src="assets/score.png#gh-dark-mode-only" alt="mdgoat score output" width="640">
+  <img src="assets/score-light.png#gh-light-mode-only" alt="mdgoat score output" width="640">
 </p>
 
 ### `clean` — fix what's safely fixable
@@ -131,7 +133,8 @@ The cleaner is **conservative and deterministic** — no LLM, no network, no gue
 You ran the same PDF through two converters and want the cleaner output — not the one that *looks* nicer. `diff` scores both and shows exactly which problems each has that the other doesn't.
 
 <p align="center">
-  <img src="assets/diff.png" alt="mdgoat diff comparing two converters" width="820">
+  <img src="assets/diff.png#gh-dark-mode-only" alt="mdgoat diff comparing two converters" width="820">
+  <img src="assets/diff-light.png#gh-light-mode-only" alt="mdgoat diff comparing two converters" width="820">
 </p>
 
 ### `cost` — the token & dollar footprint
@@ -152,6 +155,11 @@ mdgoat canary verify canaries.json model-output.txt   # exit 1 if any injection 
 ```
 
 Any canary token that comes back means that channel defeated your sanitizer. Every canary mdgoat plants is also something `mdgoat scan` catches — so if you run mdgoat in your pipeline, `verify` should always pass.
+
+<p align="center">
+  <img src="assets/canary.png#gh-dark-mode-only" alt="mdgoat canary inject then verify" width="860">
+  <img src="assets/canary-light.png#gh-light-mode-only" alt="mdgoat canary inject then verify" width="860">
+</p>
 
 ---
 
